@@ -1,36 +1,37 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Event } from './calendar.entity';
+import { User } from '../user/user.entity';
 
 @Injectable()
 export class CalendarService {
-  private calendars = [];
+  constructor(
+    @InjectRepository(Event)
+    private eventRepository: Repository<Event>,
+  ) {}
 
-  createCalendar(userId: number) {
-    const calendar = { id: Date.now(), userId, events: [] };
-    this.calendars.push(calendar);
-    return calendar;
+  async createCalendar(userId: number) {
+    return { message: 'Calendar created' }; // Placeholder implementation
   }
 
-  addEvent(userId: number, event: { title: string; date: string }) {
-    const calendar = this.calendars.find((cal) => cal.userId === userId);
-    if (calendar) {
-      const newEvent = { id: Date.now(), ...event };
-      calendar.events.push(newEvent);
-      return newEvent;
-    }
-    return null;
+  async addEvent(userId: number, event: { title: string; date: string }) {
+    const newEvent = this.eventRepository.create({
+      user: { id: userId },
+      ...event,
+    });
+    return this.eventRepository.save(newEvent);
   }
 
-  getEvents(userId: number) {
-    const calendar = this.calendars.find((cal) => cal.userId === userId);
-    return calendar ? calendar.events : [];
+  async getEvents(userId: number) {
+    return this.eventRepository.find({
+      where: { user: { id: userId } },
+      relations: ['user'],
+    });
   }
 
-  deleteEvent(userId: number, eventId: number) {
-    const calendar = this.calendars.find((cal) => cal.userId === userId);
-    if (calendar) {
-      calendar.events = calendar.events.filter((event) => event.id !== eventId);
-      return { message: 'Event deleted' };
-    }
-    return { message: 'Calendar or event not found' };
+  async deleteEvent(userId: number, eventId: number) {
+    await this.eventRepository.delete(eventId);
+    return { message: 'Event deleted' };
   }
 }

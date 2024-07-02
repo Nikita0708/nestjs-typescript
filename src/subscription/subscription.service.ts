@@ -1,27 +1,43 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Subscription } from './subscription.entity';
+import { User } from '../user/user.entity';
 
 @Injectable()
 export class SubscriptionService {
-  private subscriptions = [];
+  constructor(
+    @InjectRepository(Subscription)
+    private subscriptionRepository: Repository<Subscription>,
+  ) {}
 
-  subscribe(followerId: number, followeeId: number) {
-    const subscription = { id: Date.now(), followerId, followeeId };
-    this.subscriptions.push(subscription);
-    return subscription;
+  async subscribe(followerId: number, followeeId: number) {
+    const subscription = this.subscriptionRepository.create({
+      follower: { id: followerId },
+      followee: { id: followeeId },
+    });
+    return this.subscriptionRepository.save(subscription);
   }
 
-  getFollowers(userId: number) {
-    return this.subscriptions.filter((sub) => sub.followeeId === userId);
+  async getFollowers(userId: number) {
+    return this.subscriptionRepository.find({
+      where: { followee: { id: userId } },
+      relations: ['follower'],
+    });
   }
 
-  getFollowees(userId: number) {
-    return this.subscriptions.filter((sub) => sub.followerId === userId);
+  async getFollowees(userId: number) {
+    return this.subscriptionRepository.find({
+      where: { follower: { id: userId } },
+      relations: ['followee'],
+    });
   }
 
-  unsubscribe(followerId: number, followeeId: number) {
-    this.subscriptions = this.subscriptions.filter(
-      (sub) => sub.followerId !== followerId || sub.followeeId !== followeeId,
-    );
+  async unsubscribe(followerId: number, followeeId: number) {
+    await this.subscriptionRepository.delete({
+      follower: { id: followerId },
+      followee: { id: followeeId },
+    });
     return { message: 'Unsubscribed' };
   }
 }

@@ -1,25 +1,34 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Post } from './post.entity';
+import { User } from '../user/user.entity';
 
 @Injectable()
 export class PostService {
-  private posts = [];
+  constructor(
+    @InjectRepository(Post)
+    private postRepository: Repository<Post>,
+  ) {}
 
-  createPost(userId: number, content: string) {
-    const post = { id: Date.now(), userId, content };
-    this.posts.push(post);
-    return post;
+  async createPost(userId: number, content: string) {
+    const post = this.postRepository.create({ user: { id: userId }, content });
+    return this.postRepository.save(post);
   }
 
-  getAllPosts() {
-    return this.posts;
+  async getAllPosts() {
+    return this.postRepository.find({ relations: ['user'] });
   }
 
-  getUserPosts(userId: number) {
-    return this.posts.filter((post) => post.userId === userId);
+  async getUserPosts(userId: number) {
+    return this.postRepository.find({
+      where: { user: { id: userId } },
+      relations: ['user'],
+    });
   }
 
-  deletePost(postId: number) {
-    this.posts = this.posts.filter((post) => post.id !== postId);
+  async deletePost(postId: number) {
+    await this.postRepository.delete(postId);
     return { message: 'Post deleted' };
   }
 }
